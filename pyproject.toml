@@ -1,0 +1,30 @@
+[project]
+name = "energy_flow"
+version = "1"
+requires-python = ">= 3.12.13"
+authors = [
+    { name = "Cornelius Niese", email = "cornelius.niese@student.kit.edu" },
+    { name = "Nina Zink", email = "nina-sophie.zink@fau.de" },
+    { name = "Paul Horn", email = "paul.horn@mailbox.tu-dresden.de" }
+]
+readme = "README.md"
+dependencies = [
+    "geopandas>=1.1.3",
+    "matplotlib>=3.10.9",
+    "networkx>=3.6.1",
+    "pandas>=3.0.3",
+]
+
+[project.optional-dependencies]
+optional = [
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["data_extraction"]
+
+[project.urls]
+Repository = "https://github.com/CorneliusNI/ul-fri-network-analysis-course-project-2025-2026"
