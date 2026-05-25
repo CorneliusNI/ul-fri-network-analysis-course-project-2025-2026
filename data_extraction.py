@@ -106,7 +106,7 @@ def read_data() -> None:
     filtered_df = pd.concat(filtered_yearly_flows_list, ignore_index=True)
     filtered_df.to_csv(os.path.join("data_processed", "yearly_flows_filtered.csv"), index=False)
 
-def create_graph() -> None:
+def create_graph() -> nx.DiGraph:
     df = pd.read_csv("data_processed/yearly_flows_filtered.csv")
     df_2024 = df[df["year"] == 2024]
     #df_2024 = df_2024[df_2024["flow_twh"] >= 2]
@@ -138,6 +138,7 @@ def create_graph() -> None:
 
     plt.title("European Electricity Flows 2024")
     plt.show()
+    return G
 
 def create_map_graph():
     # --------------------------------------------------
