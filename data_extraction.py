@@ -106,17 +106,32 @@ def read_data() -> None:
     filtered_df = pd.concat(filtered_yearly_flows_list, ignore_index=True)
     filtered_df.to_csv(os.path.join("data_processed", "yearly_flows_filtered.csv"), index=False)
 
-def create_graph() -> nx.DiGraph:
+    
+def create_graphs() -> dict:
     df = pd.read_csv("data_processed/yearly_flows_filtered.csv")
-    df_2024 = df[df["year"] == 2024]
-    #df_2024 = df_2024[df_2024["flow_twh"] >= 2]
-    G = nx.from_pandas_edgelist(
-        df_2024,
-        source="source",
-        target="target",
-        edge_attr="flow_twh",
-        create_using=nx.DiGraph()
-    )
+
+    graphs = {}
+
+    for year in sorted(df["year"].unique()):
+
+        df_year = df[df["year"] == year]
+
+        G = nx.from_pandas_edgelist(
+            df_year,
+            source="source",
+            target="target",
+            edge_attr="flow_twh",
+            create_using=nx.DiGraph()
+        )
+
+        G.name = f"European Electricity Flows {year}"
+
+        graphs[year] = G
+
+    return graphs
+
+def draw_graph(G):
+
     plt.figure(figsize=(14, 10))
 
     pos = nx.spring_layout(G, seed=42)
@@ -136,10 +151,9 @@ def create_graph() -> nx.DiGraph:
         arrows=True
     )
 
-    plt.title("European Electricity Flows 2024")
+    plt.title(G.name)
     plt.show()
-    return G
-
+   
 def create_map_graph():
     # --------------------------------------------------
     # LOAD DATA
