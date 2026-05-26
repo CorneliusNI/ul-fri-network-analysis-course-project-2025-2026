@@ -202,13 +202,116 @@ def draw_graph(G):
     plt.title(G.name)
     plt.show()
 
+def analyze_ukraine_flows(graphs):
+
+    # Alle Ukraine-Varianten
+    ua_nodes = {
+        "UA",
+        "UA-IPS",
+        "UA-DobTPP"
+    }
+
+    for year, G in graphs.items():
+
+        print("\n" + "=" * 60)
+        print(f"UKRAINE ANALYSIS {year}")
+        print("=" * 60)
+
+        # Welche Ukraine-Knoten existieren im Graph?
+        present_ua = [
+            node for node in ua_nodes
+            if node in G.nodes()
+        ]
+
+        if not present_ua:
+            print("No Ukraine nodes found.")
+            continue
+
+        total_import = 0
+        total_export = 0
+
+        import_countries = {}
+        export_countries = {}
+
+        # Alle Ukraine-Knoten einzeln analysieren
+        for ua in present_ua:
+
+            print(f"\nNode: {ua}")
+
+            # IMPORTE nach Ukraine
+            in_edges = G.in_edges(ua, data=True)
+
+            print("\nImports INTO Ukraine:")
+
+            for source, target, data in in_edges:
+
+                flow = data.get("flow_twh", 0)
+
+                total_import += flow
+
+                if source not in import_countries:
+                    import_countries[source] = 0
+
+                import_countries[source] += flow
+
+                print(
+                    f"{source:>10s} -> {target:<10s}"
+                    f"{flow:>10.2f} TWh"
+                )
+
+            # EXPORTE aus Ukraine
+            out_edges = G.out_edges(ua, data=True)
+
+            print("\nExports FROM Ukraine:")
+
+            for source, target, data in out_edges:
+
+                flow = data.get("flow_twh", 0)
+
+                total_export += flow
+
+                if target not in export_countries:
+                    export_countries[target] = 0
+
+                export_countries[target] += flow
+
+                print(
+                    f"{source:>10s} -> {target:<10s}"
+                    f"{flow:>10.2f} TWh"
+                )
+
+        print("\n" + "-" * 60)
+
+        print(f"Total Import into Ukraine : {total_import:.2f} TWh")
+        print(f"Total Export from Ukraine : {total_export:.2f} TWh")
+
+        print("\nMain electricity suppliers to Ukraine:")
+
+        for country, flow in sorted(
+            import_countries.items(),
+            key=lambda x: x[1],
+            reverse=True
+        ):
+
+            print(f"{country:>10s}: {flow:>10.2f} TWh")
+
+        print("\nMain electricity receivers from Ukraine:")
+
+        for country, flow in sorted(
+            export_countries.items(),
+            key=lambda x: x[1],
+            reverse=True
+        ):
+
+            print(f"{country:>10s}: {flow:>10.2f} TWh")
+
 if __name__ == '__main__':
     G_dict = data_extraction.create_graphs()
-    
-    for year, G in G_dict.items():
-        info(G)
-        top_importers(G, 5)
-        top_exporters(G, 5)
+    analyze_ukraine_flows(G_dict)
+    #for year, G in G_dict.items():
+        # info(G)
+        # top_importers(G, 15)
+        # top_exporters(G, 15)
         #draw_graph(G)
         #plot_degrees(G)
         #tops(G, pagerank_centrality(G), "pagerank_centrality")
@@ -218,8 +321,9 @@ if __name__ == '__main__':
         # tops(G, b, f"betweenness - {year}")
 
         # c = nx.closeness_centrality(G, distance="distance")
-        # tops(G,c, f"closeness - {year}")
+       # tops(G,c, f"closeness - {year}")
         # for node in G.nodes(data=True):
         #     print(node)
         # for edge in G.edges(data=True):
         #     print(edge)
+        

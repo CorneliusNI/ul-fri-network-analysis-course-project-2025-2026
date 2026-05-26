@@ -113,9 +113,9 @@ def create_graphs() -> dict:
     graphs = {}
 
     for year in sorted(df["year"].unique()):
-
+        
         df_year = df[df["year"] == year]
-        df_year["distance"] = 1 / df_year["flow_twh"]
+        df_year["distance"] = 1 / df_year["flow_twh"] #hoher import/export score sorgt für nahe distance 
         G = nx.from_pandas_edgelist(
             df_year,
             source="source",
