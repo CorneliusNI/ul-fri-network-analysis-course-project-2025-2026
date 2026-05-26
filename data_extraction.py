@@ -115,12 +115,12 @@ def create_graphs() -> dict:
     for year in sorted(df["year"].unique()):
 
         df_year = df[df["year"] == year]
-
+        df_year["distance"] = 1 / df_year["flow_twh"]
         G = nx.from_pandas_edgelist(
             df_year,
             source="source",
             target="target",
-            edge_attr="flow_twh",
+            edge_attr=["flow_twh", "distance"],
             create_using=nx.DiGraph()
         )
 
@@ -130,49 +130,6 @@ def create_graphs() -> dict:
 
     return graphs
 
-def create_graphs_2() -> dict:
-
-    df = pd.read_csv("data_processed/yearly_flows_filtered.csv")
-
-    graphs = {}
-
-    # Alle Länder sammeln
-    countries = sorted(
-        set(df["source"]).union(set(df["target"]))
-    )
-
-    # Mapping erstellen
-    country_to_id = {
-        country: idx
-        for idx, country in enumerate(countries)
-    }
-
-    for year in sorted(df["year"].unique()):
-
-        df_year = df[df["year"] == year].copy()
-
-        # Länder durch IDs ersetzen
-        df_year["source_id"] = df_year["source"].map(country_to_id)
-        df_year["target_id"] = df_year["target"].map(country_to_id)
-
-        G = nx.from_pandas_edgelist(
-            df_year,
-            source="source_id",
-            target="target_id",
-            edge_attr="flow_twh",
-            create_using=nx.DiGraph()
-        )
-
-        G.name = f"European Electricity Flows {year}"
-
-        # Labels speichern
-        for country, idx in country_to_id.items():
-            if idx in G.nodes():
-                G.nodes[idx]["label"] = country
-
-        graphs[year] = G
-
-    return graphs
    
 def create_map_graph():
     # --------------------------------------------------

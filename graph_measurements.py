@@ -79,8 +79,32 @@ def info(G):
   
   print("{:>12s} | {:,d} ({:,d})".format('Nodes', n, nx.number_of_isolates(G)))
   print("{:>12s} | {:,d} ({:,d})".format('Edges', m, nx.number_of_selfloops(G)))
-  print("{:>12s} | {:.2f} ({:,d})".format('Degree', 2 * m / n, max([k for _, k in G.degree()])))
   
+  in_deg = dict(G.in_degree(weight="flow_twh"))
+  out_deg = dict(G.out_degree(weight="flow_twh"))
+
+  avg_in = sum(in_deg.values()) / n
+
+  max_in_node = max(in_deg, key=in_deg.get)
+  max_out_node = max(out_deg, key=out_deg.get)
+
+  print("{:>12s} | {:.2f} TWh".format(
+        "Avg Import/Export",
+        avg_in))
+
+
+  print("{:>12s} | {} ({:.2f} TWh)".format(
+        "Top Import:",
+      max_in_node,
+      in_deg[max_in_node])
+    )
+
+  print("{:>12s} | {} ({:.2f} TWh)".format(
+        "Top Export",
+       max_out_node,
+        out_deg[max_out_node]
+    ))    
+
   if isinstance(G, nx.DiGraph):
     G = nx.MultiGraph(G)
 
@@ -96,10 +120,50 @@ def info(G):
     G = nx.Graph(G)
 
   print("{:>12s} | {:.4f}".format('Clustering', nx.average_clustering(G)))
-  print()
   
   return G
 
+def top_importers(G, n=15):
+
+    imports = dict(
+        G.in_degree(weight="flow_twh")
+    )
+
+    ranked = sorted(
+        imports.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
+
+    print("Top Importers")
+
+    for node, value in ranked[:n]:
+        print(
+            f"{node:>5s} "
+            f"{value:>10.2f} TWh"
+        )
+
+def top_exporters(G, n=10):
+
+    exports = dict(
+        G.out_degree(weight="flow_twh")
+    )
+
+    ranked = sorted(
+        exports.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
+
+    print("Top Exporters")
+
+    for node, value in ranked[:n]:
+
+        print(
+            f"{node:>5s} "
+            f"{value:>10.2f} TWh"
+        )
+    
 def plot_degrees(G):
   nk = {}
   for _, k in G.degree():
@@ -143,10 +207,19 @@ if __name__ == '__main__':
     
     for year, G in G_dict.items():
         info(G)
+        top_importers(G, 5)
+        top_exporters(G, 5)
         #draw_graph(G)
         #plot_degrees(G)
-        tops(G, pagerank_centrality(G), "pagerank_centrality")
-       
-        b = nx.betweenness_centrality(G)
-        tops(G, b, "betweenness")
-   
+        #tops(G, pagerank_centrality(G), "pagerank_centrality")
+        # pr = nx.pagerank(G, weight="flow_twh")
+        # tops(G, pr, f"pagerank - {year}")
+        # b = nx.betweenness_centrality(G, weight="distance")
+        # tops(G, b, f"betweenness - {year}")
+
+        # c = nx.closeness_centrality(G, distance="distance")
+        # tops(G,c, f"closeness - {year}")
+        # for node in G.nodes(data=True):
+        #     print(node)
+        # for edge in G.edges(data=True):
+        #     print(edge)
