@@ -3,6 +3,67 @@ import networkx as nx
 import random
 import matplotlib.pyplot as plt
 
+def tops(G, C, centrality_name, n=15):
+
+    print("{:>12s} | '{:s}'".format('Centrality', centrality_name))
+
+    sorted_nodes = sorted(
+        C.items(),
+        key=lambda item: (item[1], G.degree(item[0])),
+        reverse=True
+    )
+
+    for node, score in sorted_nodes[:n]:
+
+        print(
+            "{:>12.6f} | {:>5s} ({:,d})".format(
+                score,
+                str(node),
+                G.degree(node)
+            )
+        )
+
+    print()
+
+def pagerank_centrality(G, epsilon=1e-6, alpha=0.85):
+
+    # Initialisierung
+    P = {node: 1 / len(G) for node in G.nodes()}
+
+    counter = 0
+
+    while True:
+
+        counter += 1
+
+        U = {node: 0 for node in G.nodes()}
+
+        # PageRank Update
+        for i in G.nodes():
+
+            for j in G.predecessors(i):
+
+                if G.out_degree(j) > 0:
+                    U[i] += alpha * P[j] / G.out_degree(j)
+
+        # Teleportation / Normalisierung
+        u = sum(U.values())
+
+        for i in G.nodes():
+            U[i] += (1 - u) / len(G)
+
+        # Konvergenztest
+        delta = sum(abs(P[i] - U[i]) for i in G.nodes())
+
+        if delta < epsilon:
+            break
+
+        P = U
+
+    print("Iterations:", counter)
+
+    return P
+
 
 def distances(G, n = 100):
   D = []
@@ -82,7 +143,10 @@ if __name__ == '__main__':
     
     for year, G in G_dict.items():
         info(G)
-        draw_graph(G)
-        plot_degrees(G)
-
+        #draw_graph(G)
+        #plot_degrees(G)
+        tops(G, pagerank_centrality(G), "pagerank_centrality")
+       
+        b = nx.betweenness_centrality(G)
+        tops(G, b, "betweenness")
    
