@@ -1,8 +1,29 @@
-import data_extraction 
 import networkx as nx
 import random
 import matplotlib.pyplot as plt
 import pandas as pd
+
+def create_graphs() -> dict:
+    df = pd.read_csv("../data_processed/yearly_flows_filtered.csv")
+
+    graphs = {}
+
+    for year in sorted(df["year"].unique()):
+        df_year = df[df["year"] == year]
+        df_year["distance"] = 1 / df_year["flow_twh"]  # hoher import/export score sorgt für nahe distance
+        G = nx.from_pandas_edgelist(
+            df_year,
+            source="source",
+            target="target",
+            edge_attr=["flow_twh", "distance"],
+            create_using=nx.DiGraph()
+        )
+
+        G.name = f"European Electricity Flows {year}"
+
+        graphs[year] = G
+
+    return graphs
 
 def tops(G, C, centrality_name, n=15):
     print("{:>12s} | '{:s}'".format('Centrality', centrality_name))
@@ -545,48 +566,3 @@ def compare_import_export(graphs):
     df = df.sort_values("country")
 
     return df
-
-
-if __name__ == '__main__':
-    G_dict = data_extraction.create_graphs()
-
-    # Analyze betweeness shift
-    #bc_df = compare_betweenness(G_dict)
-    #bc_df.to_csv("betweenness.csv", index=False)
-    #print(bc_df)
-
-    # Analyze closeness shift 
-    cl_df = compare_closeness(G_dict)
-    cl_df.to_csv("closeness.csv", index=False)
-    # Anaylyze pagerank shift
-    #pr_df = compare_pagerank(G_dict)
-    #pr_df.to_csv("Pagerank.csv", index=False)
-
-    # Analyze import Export of every country 
-    #in_ex = compare_import_export(G_dict)
-    #in_ex.to_csv("import_export.csv", index=False)
-    #print(in_ex)
-    # analyze imports & exports in Ukraine
-    #analyze_ukraine_flows(G_dict)
-
-    for year, G in G_dict.items():
-    #     info(G)
-    #     top_importers(G, 15)
-    #     top_exporters(G, 15)
-        #draw_graph(G)
-        #plot_degrees(G)
-        #d = nx.degree_centrality(G)   
-        # tops(G, d, f"degree -{year}")    
-        # pr = nx.pagerank(G, weight="flow_twh")
-        # tops(G, pr, f"pagerank - {year}")
-        #b = nx.betweenness_centrality(G, weight="distance")
-        #tops(G, b, f"betweenness - {year}")
-        # c = nx.closeness_centrality(G, distance="distance")
-        # tops(G,c, f"closeness - {year}")
-        # for node in G.nodes(data=True):
-        #     print(node)
-        # for edge in G.edges(data=True):
-        #     print(edge)
-        b_edges = nx.edge_betweenness_centrality(G)
-        top_edges(G, b_edges, "betweeness")
-        
