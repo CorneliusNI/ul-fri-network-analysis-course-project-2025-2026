@@ -2,6 +2,7 @@ import data_extraction
 import networkx as nx
 import random
 import matplotlib.pyplot as plt
+import pandas as pd
 
 def tops(G, C, centrality_name, n=15):
 
@@ -305,23 +306,151 @@ def analyze_ukraine_flows(graphs):
 
             print(f"{country:>10s}: {flow:>10.2f} TWh")
 
+def compare_betweenness(graphs, weighted=True):
+
+    # Alle Länder sammeln
+    all_nodes = set()
+
+    for G in graphs.values():
+        all_nodes.update(G.nodes())
+
+    all_nodes = sorted(all_nodes)
+
+    results = {}
+
+    # Für jedes Jahr Betweenness berechnen
+    for year, G in graphs.items():
+
+        if weighted:
+            bc = nx.betweenness_centrality(
+                G,
+                weight="distance",
+                normalized=True
+            )
+        else:
+            bc = nx.betweenness_centrality(
+                G,
+                normalized=True
+            )
+
+        results[year] = bc
+
+    # Tabelle aufbauen
+    table = []
+
+    for node in all_nodes:
+
+        row = {"country": node}
+
+        for year in sorted(graphs.keys()):
+
+            row[year] = round(
+                results[year].get(node, 0),
+                6
+            )
+
+        table.append(row)
+
+    # DataFrame erstellen
+    df = pd.DataFrame(table)
+
+    # Nach Ländern sortieren
+    df = df.sort_values("country")
+
+    return df
+
+
+def compare_import_export(graphs):
+
+    # Alle Länder sammeln
+    all_nodes = set()
+
+    for G in graphs.values():
+        all_nodes.update(G.nodes())
+
+    all_nodes = sorted(all_nodes)
+
+    rows = []
+
+    # Für jedes Land
+    for node in all_nodes:
+
+        row = {
+            "country": node
+        }
+
+        # Für jedes Jahr
+        for year in sorted(graphs.keys()):
+
+            G = graphs[year]
+
+            # Falls Land im Jahr existiert
+            if node in G.nodes():
+
+                weighted_import = G.in_degree(
+                    node,
+                    weight="flow_twh"
+                )
+
+                weighted_export = G.out_degree(
+                    node,
+                    weight="flow_twh"
+                )
+
+            else:
+                weighted_import = 0
+                weighted_export = 0
+
+            row[f"{year}_import"] = round(
+                weighted_import,
+                3
+            )
+
+            row[f"{year}_export"] = round(
+                weighted_export,
+                3
+            )
+
+        rows.append(row)
+
+    # DataFrame erzeugen
+    df = pd.DataFrame(rows)
+
+    # Nach Land sortieren
+    df = df.sort_values("country")
+
+    return df
+
+
 if __name__ == '__main__':
     G_dict = data_extraction.create_graphs()
-    analyze_ukraine_flows(G_dict)
+
+    # Analyze betweeness shift
+    #bc_df = compare_betweenness(G_dict)
+    #bc_df.to_csv("betweenness.csv", index=False)
+    #print(bc_df)
+
+    # Analyze import Export of every country 
+    in_ex = compare_import_export(G_dict)
+    in_ex.to_csv("import_export.csv", index=False)
+    print(in_ex)
+    # analyze imports & exports in Ukraine
+    #analyze_ukraine_flows(G_dict)
+
     #for year, G in G_dict.items():
-        # info(G)
-        # top_importers(G, 15)
-        # top_exporters(G, 15)
+    #     info(G)
+    #     top_importers(G, 15)
+    #     top_exporters(G, 15)
         #draw_graph(G)
         #plot_degrees(G)
-        #tops(G, pagerank_centrality(G), "pagerank_centrality")
+        #d = nx.degree_centrality(G)   
+        # tops(G, d, f"degree -{year}")    
         # pr = nx.pagerank(G, weight="flow_twh")
         # tops(G, pr, f"pagerank - {year}")
-        # b = nx.betweenness_centrality(G, weight="distance")
-        # tops(G, b, f"betweenness - {year}")
-
+        #b = nx.betweenness_centrality(G, weight="distance")
+        #tops(G, b, f"betweenness - {year}")
         # c = nx.closeness_centrality(G, distance="distance")
-       # tops(G,c, f"closeness - {year}")
+        # tops(G,c, f"closeness - {year}")
         # for node in G.nodes(data=True):
         #     print(node)
         # for edge in G.edges(data=True):
