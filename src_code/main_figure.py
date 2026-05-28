@@ -353,14 +353,3 @@ def create_two_panel_network_figure(
     plt.show()
 
     print(f"Saved figure to: {output_path}")
-
-
-# =========================================================
-# RUN
-# =========================================================
-
-if __name__ == "__main__":
-
-    df = pd.read_csv("../data_processed/yearly_flows.csv")
-
-    create_two_panel_network_figure(df)

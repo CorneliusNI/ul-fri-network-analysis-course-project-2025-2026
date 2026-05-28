@@ -57,7 +57,7 @@ if __name__ == '__main__':
         b_edges = nx.edge_betweenness_centrality(G)
         top_edges(G, b_edges, "betweeness")
 
-    ## Create main graphic
+    ## Create main figure
     df = pd.read_csv("../data_processed/yearly_flows.csv")
 
     create_two_panel_network_figure(df)
