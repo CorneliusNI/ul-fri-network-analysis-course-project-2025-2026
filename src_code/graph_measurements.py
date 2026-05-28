@@ -1,8 +1,33 @@
-import data_extraction 
 import networkx as nx
 import random
 import matplotlib.pyplot as plt
 import pandas as pd
+import os
+
+from result_path import OUTPUT_PATH
+
+
+def create_graphs() -> dict:
+    df = pd.read_csv("../data_processed/yearly_flows_filtered.csv")
+
+    graphs = {}
+
+    for year in sorted(df["year"].unique()):
+        df_year = df[df["year"] == year]
+        df_year["distance"] = 1 / df_year["flow_twh"]  # hoher import/export score sorgt für nahe distance
+        G = nx.from_pandas_edgelist(
+            df_year,
+            source="source",
+            target="target",
+            edge_attr=["flow_twh", "distance"],
+            create_using=nx.DiGraph()
+        )
+
+        G.name = f"European Electricity Flows {year}"
+
+        graphs[year] = G
+
+    return graphs
 
 def tops(G, C, centrality_name, n=15):
 
@@ -423,16 +448,16 @@ def compare_import_export(graphs):
 
 
 if __name__ == '__main__':
-    G_dict = data_extraction.create_graphs()
+    G_dict = create_graphs()
 
     # Analyze betweeness shift
     #bc_df = compare_betweenness(G_dict)
-    #bc_df.to_csv("betweenness.csv", index=False)
+    #bc_df.to_csv(os.path.join(OUTPUT_PATH, "betweenness.csv"), index=False)
     #print(bc_df)
 
     # Analyze import Export of every country 
     in_ex = compare_import_export(G_dict)
-    in_ex.to_csv("import_export.csv", index=False)
+    in_ex.to_csv(os.path.join(OUTPUT_PATH, "import_export.csv"), index=False)
     print(in_ex)
     # analyze imports & exports in Ukraine
     #analyze_ukraine_flows(G_dict)
