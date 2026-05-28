@@ -1,56 +1,54 @@
+import data_extraction 
 import networkx as nx
 import random
 import matplotlib.pyplot as plt
 import pandas as pd
-import os
-
-from result_path import OUTPUT_PATH
-
-
-def create_graphs() -> dict:
-    df = pd.read_csv("../data_processed/yearly_flows_filtered.csv")
-
-    graphs = {}
-
-    for year in sorted(df["year"].unique()):
-        df_year = df[df["year"] == year]
-        df_year["distance"] = 1 / df_year["flow_twh"]  # hoher import/export score sorgt für nahe distance
-        G = nx.from_pandas_edgelist(
-            df_year,
-            source="source",
-            target="target",
-            edge_attr=["flow_twh", "distance"],
-            create_using=nx.DiGraph()
-        )
-
-        G.name = f"European Electricity Flows {year}"
-
-        graphs[year] = G
-
-    return graphs
 
 def tops(G, C, centrality_name, n=15):
-
     print("{:>12s} | '{:s}'".format('Centrality', centrality_name))
-
     sorted_nodes = sorted(
         C.items(),
         key=lambda item: (item[1], G.degree(item[0])),
         reverse=True
     )
-
     for node, score in sorted_nodes[:n]:
-
         print(
             "{:>12.6f} | {:>5s} ({:,d})".format(
                 score,
                 str(node),
                 G.degree(node)
-            )
-        )
-
+            ))
     print()
+    
+def top_edges(G, C, centrality, n=15):
 
+    print("{:>20s} | {:>12s}".format(
+        "Edge",
+        centrality
+    ))
+    # Nach Score sortieren
+    sorted_edges = sorted(
+        C.items(),
+        key=lambda item: item[1],
+        reverse=True
+    )
+    for (source, target), score in sorted_edges[:n]:
+        if G.has_edge(source, target):
+            flow = G[source][target].get(
+                "flow_twh",
+                0
+            )
+        else:
+            flow = 0
+        print(
+            "{:>10s} -> {:<10s} | {:>12.6f} | {:>10.2f} TWh".format(
+                source,
+                target,
+                score,
+                flow
+            ))
+    print()
+  
 def pagerank_centrality(G, epsilon=1e-6, alpha=0.85):
 
     # Initialisierung
@@ -384,6 +382,108 @@ def compare_betweenness(graphs, weighted=True):
 
     return df
 
+def compare_closeness(graphs, weighted=True):
+
+    # Alle Länder sammeln
+    all_nodes = set()
+
+    for G in graphs.values():
+        all_nodes.update(G.nodes())
+
+    all_nodes = sorted(all_nodes)
+
+    results = {}
+
+    # Für jedes Jahr Betweenness berechnen
+    for year, G in graphs.items():
+
+        if weighted:
+            bc = nx.closeness_centrality(
+                G,
+                distance="distance",
+            )
+        else:
+            bc = nx.closeness_centrality(
+                G,
+            )
+
+        results[year] = bc
+
+    # Tabelle aufbauen
+    table = []
+
+    for node in all_nodes:
+
+        row = {"country": node}
+
+        for year in sorted(graphs.keys()):
+
+            row[year] = round(
+                results[year].get(node, 0),
+                6
+            )
+
+        table.append(row)
+
+    # DataFrame erstellen
+    df = pd.DataFrame(table)
+
+    # Nach Ländern sortieren
+    df = df.sort_values("country")
+
+    return df
+
+
+def compare_pagerank(graphs, weighted=True):
+
+    # Alle Länder sammeln
+    all_nodes = set()
+
+    for G in graphs.values():
+        all_nodes.update(G.nodes())
+
+    all_nodes = sorted(all_nodes)
+
+    results = {}
+
+    # Für jedes Jahr Betweenness berechnen
+    for year, G in graphs.items():
+
+        if weighted:
+            bc = nx.pagerank(
+                G,
+                weight="flow_twh",
+            )
+        else:
+            bc = nx.pagerank(
+                G,
+            )
+
+        results[year] = bc
+
+    # Tabelle aufbauen
+    table = []
+
+    for node in all_nodes:
+
+        row = {"country": node}
+
+        for year in sorted(graphs.keys()):
+
+            row[year] = round(
+                results[year].get(node, 0),
+                6
+            )
+
+        table.append(row)
+
+    # DataFrame erstellen
+    df = pd.DataFrame(table)
+
+    # Nach Ländern sortieren
+    df = df.sort_values("country")
+
+    return df
 
 def compare_import_export(graphs):
 
@@ -448,21 +548,28 @@ def compare_import_export(graphs):
 
 
 if __name__ == '__main__':
-    G_dict = create_graphs()
+    G_dict = data_extraction.create_graphs()
 
     # Analyze betweeness shift
     #bc_df = compare_betweenness(G_dict)
-    #bc_df.to_csv(os.path.join(OUTPUT_PATH, "betweenness.csv"), index=False)
+    #bc_df.to_csv("betweenness.csv", index=False)
     #print(bc_df)
 
+    # Analyze closeness shift 
+    cl_df = compare_closeness(G_dict)
+    cl_df.to_csv("closeness.csv", index=False)
+    # Anaylyze pagerank shift
+    #pr_df = compare_pagerank(G_dict)
+    #pr_df.to_csv("Pagerank.csv", index=False)
+
     # Analyze import Export of every country 
-    in_ex = compare_import_export(G_dict)
-    in_ex.to_csv(os.path.join(OUTPUT_PATH, "import_export.csv"), index=False)
-    print(in_ex)
+    #in_ex = compare_import_export(G_dict)
+    #in_ex.to_csv("import_export.csv", index=False)
+    #print(in_ex)
     # analyze imports & exports in Ukraine
     #analyze_ukraine_flows(G_dict)
 
-    #for year, G in G_dict.items():
+    for year, G in G_dict.items():
     #     info(G)
     #     top_importers(G, 15)
     #     top_exporters(G, 15)
@@ -480,4 +587,6 @@ if __name__ == '__main__':
         #     print(node)
         # for edge in G.edges(data=True):
         #     print(edge)
+        b_edges = nx.edge_betweenness_centrality(G)
+        top_edges(G, b_edges, "betweeness")
         
