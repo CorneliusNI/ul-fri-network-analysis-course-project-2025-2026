@@ -22,7 +22,7 @@ python main.py
 
 ## Repository Organization
 
-- The source code used for the analysis is saved in `src`.
+- The source code used for the analysis is saved in `src_code`.
 - Raw data used for this project is saved in `data_raw`.
 - Processed data used to build and analyze the network is saved in `data_processed`.
 - Results of the analysis are saved in `results`.
