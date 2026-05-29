@@ -1,4 +1,4 @@
-# **ul-fri-network-analysis-course-project-2025-2026**
+# **Effects Of The 2022 Ukraine War On Electricity Flow Networks In Central And Eastern Europe**
 
 ---
 
@@ -25,5 +25,6 @@ python data_extraction.py
 - Raw data used for this project is saved in `data_raw`.
 - Processed data used to build and analyze the network is saved in `data_processed`.
 - Results of the analysis are saved in `results`.
+- The project report is saved in `report`.
 
 ---
