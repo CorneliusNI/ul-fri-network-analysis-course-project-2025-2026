@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 
 import os
@@ -7,22 +6,19 @@ import os
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 
-from matplotlib.lines import Line2D
 from matplotlib.patches import FancyArrowPatch
 
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
+
 from result_path import OUTPUT_PATH
-
-
-# =========================================================
-# CONFIG
-# =========================================================
 
 MIN_FLOW = 5
 TOP_N = 35
 FIGSIZE = (20, 10)
 
-MAP_XLIM = (-12, 48)
-MAP_YLIM = (35, 62)
+MAP_XLIM = (5, 48)
+MAP_YLIM = (35, 59)
 
 EDGE_ALPHA = 0.55
 EDGE_RAD = 0.12
@@ -32,10 +28,6 @@ NODE_FONT = 8
 
 BASEMAP_COLOR = "#f5f5f5"
 BASEMAP_EDGE = "gray"
-
-# =========================================================
-# NODE COORDINATES
-# =========================================================
 
 COORDS = {
     "DE-LU": (10.5, 51.2),
@@ -58,7 +50,7 @@ COORDS = {
     "IT-South": (16.5, 40.6),
     #"IT-CSouth": (14.3, 42.0),
     #"UA": (25.0, 49.0),
-    "UA-IPS": (35.0, 49.2),
+    "UA-IPS": (30.0, 50.0),
     "LT": (24.0, 55.2),
     "SE4": (13.5, 56.0),
     "TR": (35.0, 39.0),
@@ -72,11 +64,6 @@ COORDS = {
     "BY": (27.9, 53.7)
 }
 
-
-# =========================================================
-# DATA PIPELINE
-# =========================================================
-
 def aggregate_period(df, start_year, end_year):
     period = df[(df["year"] >= start_year) & (df["year"] <= end_year)]
 
@@ -88,11 +75,6 @@ def aggregate_period(df, start_year, end_year):
 
 
 def make_undirected(df):
-    """
-    Merge bidirectional flows into a single undirected edge.
-    Ensures (A,B) == (B,A).
-    """
-
     df = df.copy()
 
     # canonical ordering
@@ -115,22 +97,12 @@ def filter_network(df, min_flow=MIN_FLOW, top_n=TOP_N):
     df = df[df["flow_twh"] >= min_flow]
     return df.nlargest(top_n, "flow_twh")
 
-
-# =========================================================
-# MAP SETUP (CARTOPY)
-# =========================================================
-
 def setup_axis(ax):
     ax.add_feature(cfeature.LAND, facecolor=BASEMAP_COLOR)
     ax.add_feature(cfeature.BORDERS, linewidth=0.5, edgecolor=BASEMAP_EDGE)
     ax.add_feature(cfeature.COASTLINE, linewidth=0.5)
 
     ax.set_extent([MAP_XLIM[0], MAP_XLIM[1], MAP_YLIM[0], MAP_YLIM[1]])
-
-
-# =========================================================
-# EDGE DRAWING
-# =========================================================
 
 FLOW_COLOR_BINS = [0, 2, 5, 10, np.inf]
 FLOW_COLORS = [
@@ -141,19 +113,12 @@ FLOW_COLORS = [
 ]
 
 def get_flow_color(flow):
-    """
-    Assign discrete color based on flow magnitude.
-    """
     for i in range(len(FLOW_COLOR_BINS) - 1):
         if FLOW_COLOR_BINS[i] <= flow < FLOW_COLOR_BINS[i + 1]:
             return FLOW_COLORS[i]
     return FLOW_COLORS[-1]
 
-def draw_edges(ax, df, max_flow):
-    """
-    Draw curved network edges with discrete color bins.
-    """
-
+def draw_edges(ax, df, max_flow, cmap, norm):
     for _, row in df.iterrows():
 
         src = row["source"]
@@ -167,11 +132,9 @@ def draw_edges(ax, df, max_flow):
 
         flow = row["flow_twh"]
 
-        # thickness (continuous)
         linewidth = 1 + 4 * np.sqrt(flow / max_flow)
 
-        # color (discrete bins)
-        color = get_flow_color(flow)
+        color = cmap(norm(flow))
 
         edge = FancyArrowPatch(
             (lon1, lat1),
@@ -179,17 +142,13 @@ def draw_edges(ax, df, max_flow):
             connectionstyle=f"arc3,rad={EDGE_RAD}",
             linewidth=linewidth,
             alpha=EDGE_ALPHA,
-            arrowstyle="-",
+            arrowstyle="->",
+            mutation_scale=10,
             color=color,
             zorder=2
         )
 
         ax.add_patch(edge)
-
-
-# =========================================================
-# NODE DRAWING
-# =========================================================
 
 def draw_nodes(ax):
 
@@ -215,125 +174,61 @@ def draw_nodes(ax):
             zorder=6
         )
 
-
-# =========================================================
-# PANEL
-# =========================================================
-
-def draw_network_panel(ax, network_df, max_flow, title):
+def draw_network_panel(ax, network_df, max_flow, cmap, norm, title):
 
     setup_axis(ax)
 
-    draw_edges(ax, network_df, max_flow)
+    draw_edges(ax, network_df, max_flow, cmap, norm)
     draw_nodes(ax)
 
     ax.set_title(title, fontsize=14, pad=15)
     ax.set_axis_off()
 
+def add_shared_legend(fig, cmap, norm):
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
 
-# =========================================================
-# LEGEND
-# =========================================================
-
-def add_shared_legend(ax):
-    """
-    Legend for discrete flow color bins.
-    """
-
-    handles = [
-        Line2D([0], [0], color=FLOW_COLORS[0], lw=4, label="0–5 TWh"),
-        Line2D([0], [0], color=FLOW_COLORS[1], lw=4, label="5–10 TWh"),
-        Line2D([0], [0], color=FLOW_COLORS[2], lw=4, label="10–15 TWh"),
-        Line2D([0], [0], color=FLOW_COLORS[3], lw=4, label="15+ TWh"),
-    ]
-
-    legend = ax.legend(
-        handles=handles,
-        title="Annual flow",
-        loc="upper left",
-        frameon=False,
-        fontsize=9,
-        title_fontsize=10
+    cbar = fig.colorbar(
+        sm,
+        ax=fig.axes,
+        orientation="horizontal",
+        fraction=0.04,
+        pad=0.04
     )
 
-    ax.add_artist(legend)
-
-def add_flow_width_legend(ax, max_flow):
-    """
-    Legend for edge width scaling.
-    """
-
-    example_flows = [5, 10, 20]
-
-    handles = []
-
-    for f in example_flows:
-        lw = 0.5 + 6 * np.sqrt(f / max_flow)
-
-        handles.append(
-            Line2D(
-                [0], [0],
-                color="black",
-                lw=lw,
-                label=f"{f} TWh (width)"
-            )
-        )
-
-    ax.legend(
-        handles=handles,
-        loc="lower left",
-        frameon=False,
-        fontsize=8,
-        title="Line width",
-        title_fontsize=9
-    )
-
-
-# =========================================================
-# MAIN FIGURE
-# =========================================================
+    cbar.set_label("Annual electricity flow (TWh)")
 
 def create_two_panel_network_figure(
     df,
     output_path=os.path.join(OUTPUT_PATH, "main_fig.png")
 ):
-
-    # -------------------------
-    # aggregate periods
-    # -------------------------
     pre = aggregate_period(df, 2019, 2021)
     post = aggregate_period(df, 2022, 2024)
 
-    # -------------------------
-    # undirected network
-    # -------------------------
-    pre = make_undirected(pre)
-    post = make_undirected(post)
-
-    # -------------------------
-    # filtering
-    # -------------------------
-    #pre = filter_network(pre)
-    #post = filter_network(post)
-
-    # -------------------------
-    # shared scaling
-    # -------------------------
     max_flow = max(pre["flow_twh"].max(), post["flow_twh"].max())
 
-    # -------------------------
-    # figure
-    # -------------------------
+    cmap = cm.viridis  # or plasma, inferno, cividis
+    norm = mcolors.PowerNorm(gamma=0.5, vmin=0, vmax=max_flow)
+
     fig, axes = plt.subplots(
         1, 2,
-        figsize=FIGSIZE,
+        figsize=(24, 10),  # wider figure for horizontal layout
         subplot_kw={"projection": ccrs.PlateCarree()}
+    )
+
+    fig.subplots_adjust(
+        hspace=0.05,
+        wspace=0.05, # almost touching
+        top=0.8,
+        bottom=0.10 # reserve space for legend
     )
 
     draw_network_panel(
         axes[0],
         pre,
         max_flow,
+        cmap,
+        norm,
         "Aggregated Cross-Border Electricity Flows (2019–2021)"
     )
 
@@ -341,13 +236,12 @@ def create_two_panel_network_figure(
         axes[1],
         post,
         max_flow,
+        cmap,
+        norm,
         "Aggregated Cross-Border Electricity Flows (2022–2024)"
     )
 
-    add_shared_legend(fig)
-    #add_flow_width_legend(fig, max_flow)
-
-    plt.tight_layout(rect=[0, 0.05, 1, 1])
+    add_shared_legend(fig, cmap, norm)
 
     plt.savefig(output_path, dpi=400, bbox_inches="tight")
     plt.show()
