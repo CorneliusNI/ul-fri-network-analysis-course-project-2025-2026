@@ -15,13 +15,14 @@ The necessary dependencies can be installed using the projects `pyproject.toml` 
 pip install .
 ```
 
-To run the analysis just execute the `data_extraction.py` file:
+To run the analysis just execute the `main.py` file:
 ```bash
-python data_extraction.py
+python main.py
 ```
 
 ## Repository Organization
 
+- The source code used for the analysis is saved in `src`.
 - Raw data used for this project is saved in `data_raw`.
 - Processed data used to build and analyze the network is saved in `data_processed`.
 - Results of the analysis are saved in `results`.
