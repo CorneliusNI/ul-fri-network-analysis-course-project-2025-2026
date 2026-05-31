@@ -253,9 +253,9 @@ def analyze_ukraine_flows(graphs):
 
     # Alle Ukraine-Varianten
     ua_nodes = {
-        
+        "UA",
         "UA-IPS",
-        
+        "UA-DobTPP"
     }
 
     for year, G in graphs.items():

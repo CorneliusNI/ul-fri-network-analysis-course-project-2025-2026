@@ -6,7 +6,7 @@ from result_path import OUTPUT_PATH
 from data_extraction import read_data
 from graph_measurements import (
     analyze_ukraine_flows, create_graphs, compare_betweenness, compare_import_export, compare_closeness,
-    compare_pagerank, top_importers, top_exporters, info, draw_graph, plot_degrees, top_edges, tops
+    compare_pagerank, top_importers, top_exporters, info, draw_graph, plot_degrees, top_edges, tops, analyze_clustering
 )
 from main_figure import create_two_panel_network_figure
 
@@ -36,6 +36,10 @@ if __name__ == '__main__':
     # Analyze imports & exports in Ukraine
     analyze_ukraine_flows(G_dict)
 
+    # Analyze clustering & communities
+    analyze_clustering(G_dict)
+
+    
     for year, G in G_dict.items():
         info(G)
         top_importers(G, 15)
