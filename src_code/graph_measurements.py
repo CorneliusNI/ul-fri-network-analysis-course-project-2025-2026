@@ -2,6 +2,8 @@ import networkx as nx
 import random
 import matplotlib.pyplot as plt
 import pandas as pd
+import community.community_louvain as community_louvain
+
 
 def create_graphs() -> dict:
     df = pd.read_csv("../data_processed/yearly_flows_filtered.csv")
@@ -251,9 +253,9 @@ def analyze_ukraine_flows(graphs):
 
     # Alle Ukraine-Varianten
     ua_nodes = {
-        "UA",
+        
         "UA-IPS",
-        "UA-DobTPP"
+        
     }
 
     for year, G in graphs.items():
@@ -508,6 +510,7 @@ def compare_pagerank(graphs, weighted=True):
 
 def compare_import_export(graphs):
 
+
     # Alle Länder sammeln
     all_nodes = set()
 
@@ -566,3 +569,69 @@ def compare_import_export(graphs):
     df = df.sort_values("country")
 
     return df
+
+def analyze_clustering(graphs):
+    results = []
+
+    for year, G in graphs.items():
+
+        print("\n" + "=" * 60)
+        print(f"COMMUNITY ANALYSIS {year}")
+        print("=" * 60)
+
+        # Louvain benötigt ungerichteten Graphen
+        Gu = G.to_undirected()
+
+        # Communities berechnen
+        partition = community_louvain.best_partition(
+            Gu,
+            weight="flow_twh"
+        )
+
+        # Cluster als Node-Attribute speichern
+        nx.set_node_attributes(
+            G,
+            partition,
+            "cluster"
+        )
+
+        # Communities sammeln
+        communities = {}
+
+        for node, cluster_id in partition.items():
+
+            if cluster_id not in communities:
+                communities[cluster_id] = []
+
+            communities[cluster_id].append(node)
+
+        # Modularity berechnen
+        modularity = community_louvain.modularity(
+            partition,
+            Gu,
+            weight="flow_twh"
+        )
+
+        print(f"\nNumber of communities: {len(communities)}")
+        print(f"Modularity: {modularity:.4f}")
+
+        # Communities ausgeben
+        for cluster_id, nodes in communities.items():
+
+            nodes = sorted(nodes)
+
+            print(f"\nCluster {cluster_id}:")
+            print(", ".join(nodes))
+
+        # Ergebnisse speichern
+        results.append({
+            "year": year,
+            "num_communities": len(communities),
+            "modularity": modularity
+        })
+
+    # Übersichtstabelle
+    df = pd.DataFrame(results)
+
+    return df
+
